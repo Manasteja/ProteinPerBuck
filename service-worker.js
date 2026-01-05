@@ -1,16 +1,15 @@
 /**
- * ProteinValue Service Worker
+ * ProteinValue v2 Service Worker
  * Enables offline functionality and caching
  */
 
-const CACHE_NAME = 'proteinvalue-v1';
+const CACHE_NAME = 'proteinvalue-v2';
 const urlsToCache = [
     '/',
     '/index.html',
     '/styles.css',
     '/app.js',
     '/manifest.json',
-    'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
     'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
@@ -26,6 +25,8 @@ self.addEventListener('install', (event) => {
                 console.log('ProteinValue: Cache failed', err);
             })
     );
+    // Activate immediately
+    self.skipWaiting();
 });
 
 // Fetch event - serve from cache when offline
@@ -56,4 +57,6 @@ self.addEventListener('activate', (event) => {
             );
         })
     );
+    // Take control immediately
+    self.clients.claim();
 });

@@ -1,6 +1,6 @@
 /**
- * ProteinValue - Smart Protein Shopping Calculator
- * Features: OCR label reading, cost comparison, diversity tracking
+ * ProteinValue v2 - World Class Protein Shopping Calculator
+ * Features: Step wizard, photo reference, bulk buying, diversity tracking
  */
 
 // ==========================================
@@ -8,37 +8,37 @@
 // ==========================================
 
 const state = {
+    currentStep: 1,
     products: [],
-    inputMode: 'manual',
-    cameraStream: null,
-    chart: null,
-    ocrWorker: null,
-    detectedValues: {
-        protein: null,
-        servings: null
-    }
+    photos: {
+        product: null,
+        label: null
+    },
+    chart: null
 };
 
 const PROTEIN_SOURCES = {
     // Animal-based
-    whey: { label: 'Whey', category: 'animal', emoji: '🥛' },
-    casein: { label: 'Casein', category: 'animal', emoji: '🥛' },
-    egg: { label: 'Egg White', category: 'animal', emoji: '🥚' },
-    beef: { label: 'Beef', category: 'animal', emoji: '🥩' },
-    chicken: { label: 'Chicken', category: 'animal', emoji: '🍗' },
-    fish: { label: 'Fish', category: 'animal', emoji: '🐟' },
-    dairy: { label: 'Dairy', category: 'animal', emoji: '🧀' },
+    'whey': { label: 'Whey', category: 'animal', emoji: '🥛' },
+    'whey-isolate': { label: 'Whey Isolate', category: 'animal', emoji: '🥛' },
+    'casein': { label: 'Casein', category: 'animal', emoji: '🥛' },
+    'egg': { label: 'Egg White', category: 'animal', emoji: '🥚' },
+    'beef': { label: 'Beef', category: 'animal', emoji: '🥩' },
+    'chicken': { label: 'Chicken', category: 'animal', emoji: '🍗' },
+    'fish': { label: 'Fish', category: 'animal', emoji: '🐟' },
+    'dairy': { label: 'Dairy', category: 'animal', emoji: '🧀' },
     // Plant-based
-    pea: { label: 'Pea', category: 'plant', emoji: '🌱' },
-    soy: { label: 'Soy', category: 'plant', emoji: '🫘' },
-    rice: { label: 'Rice', category: 'plant', emoji: '🌾' },
-    hemp: { label: 'Hemp', category: 'plant', emoji: '🌿' },
-    peanut: { label: 'Peanut', category: 'plant', emoji: '🥜' },
+    'pea': { label: 'Pea', category: 'plant', emoji: '🌱' },
+    'soy': { label: 'Soy', category: 'plant', emoji: '🫘' },
+    'rice': { label: 'Rice', category: 'plant', emoji: '🌾' },
+    'hemp': { label: 'Hemp', category: 'plant', emoji: '🌿' },
+    'peanut': { label: 'Peanut', category: 'plant', emoji: '🥜' },
+    'lentil': { label: 'Lentil', category: 'plant', emoji: '🫘' },
     'blend-plant': { label: 'Plant Blend', category: 'plant', emoji: '🥗' },
-    // Mixed/Other
-    'blend-mixed': { label: 'Mixed Blend', category: 'mixed', emoji: '🔀' },
-    collagen: { label: 'Collagen', category: 'other', emoji: '✨' },
-    other: { label: 'Other', category: 'other', emoji: '📦' }
+    // Other
+    'blend-mixed': { label: 'Mixed Blend', category: 'other', emoji: '🔀' },
+    'collagen': { label: 'Collagen', category: 'other', emoji: '✨' },
+    'other': { label: 'Other', category: 'other', emoji: '📦' }
 };
 
 // ==========================================
@@ -53,250 +53,233 @@ function initializeApp() {
     // Load saved products
     loadProducts();
     
-    // Input mode toggle
-    document.querySelectorAll('input[name="input-mode"]').forEach(input => {
-        input.addEventListener('change', handleInputModeChange);
+    // Step navigation
+    document.getElementById('next-to-step-2').addEventListener('click', () => goToStep(2));
+    document.getElementById('skip-photos-btn').addEventListener('click', () => goToStep(2));
+    document.getElementById('back-to-step-1').addEventListener('click', () => goToStep(1));
+    document.getElementById('add-another-btn').addEventListener('click', () => {
+        resetForm();
+        goToStep(1);
     });
     
-    // Add product button
+    // Photo capture - Product
+    document.getElementById('capture-product-btn').addEventListener('click', () => {
+        document.getElementById('product-photo-input').click();
+    });
+    document.getElementById('product-photo-input').addEventListener('change', (e) => {
+        handlePhotoCapture(e, 'product');
+    });
+    document.getElementById('retake-product-btn').addEventListener('click', () => {
+        retakePhoto('product');
+    });
+    
+    // Photo capture - Label
+    document.getElementById('capture-label-btn').addEventListener('click', () => {
+        document.getElementById('label-photo-input').click();
+    });
+    document.getElementById('label-photo-input').addEventListener('change', (e) => {
+        handlePhotoCapture(e, 'label');
+    });
+    document.getElementById('retake-label-btn').addEventListener('click', () => {
+        retakePhoto('label');
+    });
+    
+    // Toggle photo reference
+    document.getElementById('toggle-photos-btn').addEventListener('click', togglePhotoReference);
+    
+    // Calculation method toggle
+    document.querySelectorAll('input[name="calc-method"]').forEach(input => {
+        input.addEventListener('change', handleCalcMethodChange);
+    });
+    
+    // Live calculations
+    document.getElementById('product-price').addEventListener('input', updateCalculations);
+    document.getElementById('servings-count').addEventListener('input', updateCalculations);
+    document.getElementById('protein-per-serving').addEventListener('input', updateCalculations);
+    document.getElementById('total-protein').addEventListener('input', updateCalculations);
+    
+    // Add product
     document.getElementById('add-product-btn').addEventListener('click', handleAddProduct);
     
-    // Clear all button
+    // Clear all
     document.getElementById('clear-all-btn').addEventListener('click', handleClearAll);
     
-    // Camera controls
-    document.getElementById('start-camera-btn').addEventListener('click', startCamera);
-    document.getElementById('capture-btn').addEventListener('click', captureImage);
-    document.getElementById('retake-btn').addEventListener('click', retakeImage);
-    document.getElementById('use-detected-btn').addEventListener('click', useDetectedValues);
+    // Sort
+    document.getElementById('sort-by').addEventListener('change', updateDisplay);
     
-    // Auto-calculate total protein when servings/per-serving change
-    document.getElementById('servings').addEventListener('input', calculateTotalProtein);
-    document.getElementById('protein-per-serving').addEventListener('input', calculateTotalProtein);
+    // Modal
+    document.getElementById('close-modal').addEventListener('click', closeModal);
+    document.getElementById('product-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'product-modal') closeModal();
+    });
     
-    // Update display
+    // Initial display update
     updateDisplay();
     
-    console.log('🥩 ProteinValue initialized!');
+    // If we have products, go to step 3
+    if (state.products.length > 0) {
+        goToStep(3);
+    }
+    
+    console.log('🥩 ProteinValue v2 initialized!');
 }
 
 // ==========================================
-// INPUT MODE HANDLING
+// STEP NAVIGATION
 // ==========================================
 
-function handleInputModeChange(e) {
-    state.inputMode = e.target.value;
+function goToStep(step) {
+    state.currentStep = step;
     
-    const manualInputs = document.getElementById('manual-inputs');
-    const cameraInputs = document.getElementById('camera-inputs');
+    // Update step indicator
+    document.querySelectorAll('.step-indicator .step').forEach((el, i) => {
+        el.classList.remove('active', 'completed');
+        if (i + 1 < step) {
+            el.classList.add('completed');
+        } else if (i + 1 === step) {
+            el.classList.add('active');
+        }
+    });
     
-    if (state.inputMode === 'manual') {
-        manualInputs.classList.remove('hidden');
-        cameraInputs.classList.add('hidden');
-        stopCamera();
+    // Show/hide step content
+    document.querySelectorAll('.step-content').forEach((el, i) => {
+        el.classList.toggle('hidden', i + 1 !== step);
+    });
+    
+    // Step-specific actions
+    if (step === 2) {
+        setupPhotoReference();
+    }
+    
+    if (step === 3) {
+        updateDisplay();
+    }
+    
+    // Scroll to top
+    document.querySelector('.sidebar').scrollTop = 0;
+}
+
+// ==========================================
+// PHOTO HANDLING
+// ==========================================
+
+function handlePhotoCapture(event, type) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imageData = e.target.result;
+        state.photos[type] = imageData;
+        
+        // Update UI
+        const img = document.getElementById(`${type}-photo-img`);
+        const preview = document.getElementById(`${type}-photo-preview`);
+        const retakeBtn = document.getElementById(`retake-${type}-btn`);
+        
+        img.src = imageData;
+        img.classList.remove('hidden');
+        preview.classList.add('hidden');
+        retakeBtn.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+function retakePhoto(type) {
+    state.photos[type] = null;
+    
+    const img = document.getElementById(`${type}-photo-img`);
+    const preview = document.getElementById(`${type}-photo-preview`);
+    const retakeBtn = document.getElementById(`retake-${type}-btn`);
+    const input = document.getElementById(`${type}-photo-input`);
+    
+    img.classList.add('hidden');
+    img.src = '';
+    preview.classList.remove('hidden');
+    retakeBtn.classList.add('hidden');
+    input.value = '';
+}
+
+function setupPhotoReference() {
+    const container = document.getElementById('photo-reference');
+    const productRef = document.getElementById('ref-product-img');
+    const labelRef = document.getElementById('ref-label-img');
+    
+    let hasPhotos = false;
+    
+    if (state.photos.product) {
+        productRef.src = state.photos.product;
+        productRef.classList.remove('hidden');
+        hasPhotos = true;
     } else {
-        manualInputs.classList.add('hidden');
-        cameraInputs.classList.remove('hidden');
+        productRef.classList.add('hidden');
     }
+    
+    if (state.photos.label) {
+        labelRef.src = state.photos.label;
+        labelRef.classList.remove('hidden');
+        hasPhotos = true;
+    } else {
+        labelRef.classList.add('hidden');
+    }
+    
+    container.classList.toggle('hidden', !hasPhotos);
 }
 
-function calculateTotalProtein() {
-    const servings = parseFloat(document.getElementById('servings').value) || 0;
-    const perServing = parseFloat(document.getElementById('protein-per-serving').value) || 0;
+function togglePhotoReference() {
+    const images = document.getElementById('reference-images');
+    const btn = document.getElementById('toggle-photos-btn');
     
-    if (servings > 0 && perServing > 0) {
-        document.getElementById('total-protein').value = Math.round(servings * perServing);
+    if (images.style.display === 'none') {
+        images.style.display = 'flex';
+        btn.textContent = 'Hide';
+    } else {
+        images.style.display = 'none';
+        btn.textContent = 'Show';
     }
 }
 
 // ==========================================
-// CAMERA & OCR
+// CALCULATION METHODS
 // ==========================================
 
-async function startCamera() {
-    try {
-        const video = document.getElementById('video');
-        const startBtn = document.getElementById('start-camera-btn');
-        const captureBtn = document.getElementById('capture-btn');
-        
-        // Request camera access
-        state.cameraStream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-                facingMode: 'environment', // Use back camera on mobile
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        });
-        
-        video.srcObject = state.cameraStream;
-        video.classList.remove('hidden');
-        
-        startBtn.classList.add('hidden');
-        captureBtn.classList.remove('hidden');
-        
-        // Hide any previous results
-        document.getElementById('captured-image').classList.add('hidden');
-        document.getElementById('ocr-results').classList.add('hidden');
-        document.getElementById('retake-btn').classList.add('hidden');
-        
-    } catch (error) {
-        console.error('Camera error:', error);
-        showError('Could not access camera. Please allow camera permissions or use manual entry.');
-    }
+function handleCalcMethodChange(e) {
+    const method = e.target.value;
+    
+    document.getElementById('per-serving-inputs').classList.toggle('hidden', method !== 'per-serving');
+    document.getElementById('total-inputs').classList.toggle('hidden', method !== 'total');
+    
+    updateCalculations();
 }
 
-function stopCamera() {
-    if (state.cameraStream) {
-        state.cameraStream.getTracks().forEach(track => track.stop());
-        state.cameraStream = null;
+function updateCalculations() {
+    const price = parseFloat(document.getElementById('product-price').value) || 0;
+    const method = document.querySelector('input[name="calc-method"]:checked').value;
+    
+    let totalProtein = 0;
+    
+    if (method === 'per-serving') {
+        const servings = parseFloat(document.getElementById('servings-count').value) || 0;
+        const perServing = parseFloat(document.getElementById('protein-per-serving').value) || 0;
+        totalProtein = servings * perServing;
+    } else {
+        totalProtein = parseFloat(document.getElementById('total-protein').value) || 0;
     }
     
-    const video = document.getElementById('video');
-    video.srcObject = null;
-}
-
-async function captureImage() {
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const capturedImage = document.getElementById('captured-image');
+    // Update display
+    document.getElementById('calc-total-protein').textContent = 
+        totalProtein > 0 ? `${totalProtein.toFixed(0)}g` : '-- g';
     
-    // Set canvas size to video size
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Draw video frame to canvas
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-    
-    // Convert to image
-    const imageData = canvas.toDataURL('image/png');
-    capturedImage.src = imageData;
-    
-    // Update UI
-    video.classList.add('hidden');
-    capturedImage.classList.remove('hidden');
-    document.getElementById('capture-btn').classList.add('hidden');
-    document.getElementById('retake-btn').classList.remove('hidden');
-    
-    // Stop camera stream
-    stopCamera();
-    
-    // Run OCR
-    await runOCR(imageData);
-}
-
-function retakeImage() {
-    document.getElementById('captured-image').classList.add('hidden');
-    document.getElementById('ocr-results').classList.add('hidden');
-    document.getElementById('retake-btn').classList.add('hidden');
-    document.getElementById('start-camera-btn').classList.remove('hidden');
-    
-    state.detectedValues = { protein: null, servings: null };
-}
-
-async function runOCR(imageData) {
-    const statusEl = document.getElementById('ocr-status');
-    const resultsEl = document.getElementById('ocr-results');
-    
-    statusEl.classList.remove('hidden');
-    resultsEl.classList.add('hidden');
-    
-    try {
-        // Initialize Tesseract worker
-        const worker = await Tesseract.createWorker('eng');
+    if (price > 0 && totalProtein > 0) {
+        const costPerGram = price / totalProtein;
+        const proteinPerDollar = totalProtein / price;
         
-        // Run OCR
-        const { data: { text } } = await worker.recognize(imageData);
-        
-        // Terminate worker
-        await worker.terminate();
-        
-        console.log('OCR Raw Text:', text);
-        
-        // Parse nutrition info from text
-        const parsed = parseNutritionLabel(text);
-        
-        statusEl.classList.add('hidden');
-        
-        if (parsed.protein || parsed.servings) {
-            state.detectedValues = parsed;
-            
-            document.getElementById('detected-protein').textContent = 
-                parsed.protein ? `${parsed.protein}g` : '--';
-            document.getElementById('detected-servings').textContent = 
-                parsed.servings ? parsed.servings : '--';
-            
-            resultsEl.classList.remove('hidden');
-        } else {
-            showError('Could not detect values from label. Please enter manually.');
-        }
-        
-    } catch (error) {
-        console.error('OCR Error:', error);
-        statusEl.classList.add('hidden');
-        showError('Error reading label. Please enter values manually.');
+        document.getElementById('calc-cost-per-gram').textContent = `$${costPerGram.toFixed(3)}`;
+        document.getElementById('calc-protein-per-dollar').textContent = `${proteinPerDollar.toFixed(1)}g`;
+    } else {
+        document.getElementById('calc-cost-per-gram').textContent = '$--';
+        document.getElementById('calc-protein-per-dollar').textContent = '-- g';
     }
-}
-
-function parseNutritionLabel(text) {
-    const result = { protein: null, servings: null };
-    
-    // Normalize text
-    const normalized = text.toLowerCase().replace(/\s+/g, ' ');
-    
-    // Look for protein values
-    // Patterns: "protein 25g", "protein: 25 g", "protein 25 grams"
-    const proteinPatterns = [
-        /protein[:\s]*(\d+(?:\.\d+)?)\s*g/i,
-        /protein[:\s]*(\d+(?:\.\d+)?)\s*grams?/i,
-        /(\d+(?:\.\d+)?)\s*g\s*protein/i
-    ];
-    
-    for (const pattern of proteinPatterns) {
-        const match = text.match(pattern);
-        if (match) {
-            result.protein = parseFloat(match[1]);
-            break;
-        }
-    }
-    
-    // Look for servings
-    // Patterns: "servings per container 24", "servings: 30", "24 servings"
-    const servingsPatterns = [
-        /servings?\s*(?:per\s*container)?[:\s]*(\d+)/i,
-        /(\d+)\s*servings?\s*(?:per\s*container)?/i,
-        /about\s*(\d+)\s*servings?/i
-    ];
-    
-    for (const pattern of servingsPatterns) {
-        const match = text.match(pattern);
-        if (match) {
-            const num = parseInt(match[1]);
-            // Sanity check - servings should be reasonable (1-500)
-            if (num >= 1 && num <= 500) {
-                result.servings = num;
-                break;
-            }
-        }
-    }
-    
-    return result;
-}
-
-function useDetectedValues() {
-    const { protein, servings } = state.detectedValues;
-    
-    if (protein && servings) {
-        // Calculate total protein
-        const totalProtein = Math.round(protein * servings);
-        document.getElementById('camera-total-protein').value = totalProtein;
-    } else if (protein) {
-        // Just set as-is, user will need to multiply
-        document.getElementById('camera-total-protein').value = protein;
-    }
-    
-    document.getElementById('ocr-results').classList.add('hidden');
-    showSuccess('Values applied! Add price and source to complete.');
 }
 
 // ==========================================
@@ -306,106 +289,98 @@ function useDetectedValues() {
 function handleAddProduct() {
     hideError();
     
-    let productData;
+    // Gather data
+    const name = document.getElementById('product-name').value.trim();
+    const brand = document.getElementById('product-brand').value.trim();
+    const source = document.getElementById('protein-source').value;
+    const price = parseFloat(document.getElementById('product-price').value) || 0;
+    const containerSize = document.getElementById('container-size').value;
+    const containerUnit = document.getElementById('container-unit').value;
+    const servingSize = document.getElementById('serving-size').value;
+    const servingUnit = document.getElementById('serving-unit').value;
+    const notes = document.getElementById('product-notes').value.trim();
+    const contribute = document.getElementById('contribute-data').checked;
     
-    if (state.inputMode === 'manual') {
-        productData = getManualInputData();
+    const method = document.querySelector('input[name="calc-method"]:checked').value;
+    let totalProtein = 0;
+    let servingsCount = 0;
+    let proteinPerServing = 0;
+    
+    if (method === 'per-serving') {
+        servingsCount = parseFloat(document.getElementById('servings-count').value) || 0;
+        proteinPerServing = parseFloat(document.getElementById('protein-per-serving').value) || 0;
+        totalProtein = servingsCount * proteinPerServing;
     } else {
-        productData = getCameraInputData();
+        totalProtein = parseFloat(document.getElementById('total-protein').value) || 0;
     }
     
     // Validate
-    if (!productData.name) {
+    if (!name) {
         showError('Please enter a product name');
         return;
     }
     
-    if (!productData.price || productData.price <= 0) {
-        showError('Please enter a valid price');
-        return;
-    }
-    
-    if (!productData.totalProtein || productData.totalProtein <= 0) {
-        showError('Please enter total protein amount');
-        return;
-    }
-    
-    if (!productData.source) {
+    if (!source) {
         showError('Please select a protein source');
         return;
     }
     
-    // Calculate values
-    productData.costPerGram = productData.price / productData.totalProtein;
-    productData.proteinPerDollar = productData.totalProtein / productData.price;
-    productData.id = Date.now();
-    productData.contributeData = document.getElementById('contribute-data').checked;
-    
-    // Add to state
-    state.products.push(productData);
-    
-    // Save to localStorage
-    saveProducts();
-    
-    // Update display
-    updateDisplay();
-    
-    // Clear form
-    clearForm();
-    
-    // Show success feedback
-    showSuccess(`Added: ${productData.name}`);
-}
-
-function getManualInputData() {
-    const servings = parseFloat(document.getElementById('servings').value) || 0;
-    const perServing = parseFloat(document.getElementById('protein-per-serving').value) || 0;
-    let totalProtein = parseFloat(document.getElementById('total-protein').value) || 0;
-    
-    // If total not entered but servings data exists, calculate
-    if (totalProtein === 0 && servings > 0 && perServing > 0) {
-        totalProtein = servings * perServing;
+    if (price <= 0) {
+        showError('Please enter a valid price');
+        return;
     }
     
-    return {
-        name: document.getElementById('product-name').value.trim(),
-        price: parseFloat(document.getElementById('product-price').value) || 0,
-        totalProtein: totalProtein,
-        source: document.getElementById('protein-source').value,
-        servings: servings,
-        proteinPerServing: perServing
-    };
-}
-
-function getCameraInputData() {
-    return {
-        name: document.getElementById('camera-product-name').value.trim(),
-        price: parseFloat(document.getElementById('camera-product-price').value) || 0,
-        totalProtein: parseFloat(document.getElementById('camera-total-protein').value) || 0,
-        source: document.getElementById('camera-protein-source').value
-    };
-}
-
-function clearForm() {
-    // Manual inputs
-    document.getElementById('product-name').value = '';
-    document.getElementById('product-price').value = '';
-    document.getElementById('total-protein').value = '';
-    document.getElementById('servings').value = '';
-    document.getElementById('protein-per-serving').value = '';
-    document.getElementById('protein-source').value = '';
+    if (totalProtein <= 0) {
+        showError('Please enter protein content');
+        return;
+    }
     
-    // Camera inputs
-    document.getElementById('camera-product-name').value = '';
-    document.getElementById('camera-product-price').value = '';
-    document.getElementById('camera-total-protein').value = '';
-    document.getElementById('camera-protein-source').value = '';
+    // Calculate values
+    const costPerGram = price / totalProtein;
+    const proteinPerDollar = totalProtein / price;
+    
+    // Create product object
+    const product = {
+        id: Date.now(),
+        name,
+        brand,
+        source,
+        price,
+        containerSize: containerSize ? `${containerSize} ${containerUnit}` : null,
+        servingsCount,
+        proteinPerServing,
+        servingSize: servingSize ? `${servingSize} ${servingUnit}` : null,
+        totalProtein,
+        costPerGram,
+        proteinPerDollar,
+        notes,
+        contribute,
+        photos: { ...state.photos },
+        createdAt: new Date().toISOString()
+    };
+    
+    // Add to state
+    state.products.push(product);
+    
+    // Save
+    saveProducts();
+    
+    // Go to comparison
+    goToStep(3);
+    
+    // Show success
+    showSuccess(`Added: ${name}`);
 }
 
 function deleteProduct(id) {
     state.products = state.products.filter(p => p.id !== id);
     saveProducts();
     updateDisplay();
+    
+    if (state.products.length === 0) {
+        resetForm();
+        goToStep(1);
+    }
 }
 
 function handleClearAll() {
@@ -414,8 +389,38 @@ function handleClearAll() {
     if (confirm('Clear all products? This cannot be undone.')) {
         state.products = [];
         saveProducts();
-        updateDisplay();
+        resetForm();
+        goToStep(1);
     }
+}
+
+function resetForm() {
+    // Reset photos
+    state.photos = { product: null, label: null };
+    retakePhoto('product');
+    retakePhoto('label');
+    
+    // Reset form fields
+    document.getElementById('product-name').value = '';
+    document.getElementById('product-brand').value = '';
+    document.getElementById('protein-source').value = '';
+    document.getElementById('product-price').value = '';
+    document.getElementById('container-size').value = '';
+    document.getElementById('servings-count').value = '';
+    document.getElementById('protein-per-serving').value = '';
+    document.getElementById('serving-size').value = '';
+    document.getElementById('total-protein').value = '';
+    document.getElementById('product-notes').value = '';
+    
+    // Reset calc method
+    document.querySelector('input[name="calc-method"][value="per-serving"]').checked = true;
+    document.getElementById('per-serving-inputs').classList.remove('hidden');
+    document.getElementById('total-inputs').classList.add('hidden');
+    
+    // Reset calculations display
+    document.getElementById('calc-total-protein').textContent = '-- g';
+    document.getElementById('calc-cost-per-gram').textContent = '$--';
+    document.getElementById('calc-protein-per-dollar').textContent = '-- g';
 }
 
 // ==========================================
@@ -423,7 +428,12 @@ function handleClearAll() {
 // ==========================================
 
 function saveProducts() {
-    localStorage.setItem('proteinvalue_products', JSON.stringify(state.products));
+    // Don't save photos to localStorage (too large)
+    const toSave = state.products.map(p => ({
+        ...p,
+        photos: null // Strip photos for storage
+    }));
+    localStorage.setItem('proteinvalue_products', JSON.stringify(toSave));
 }
 
 function loadProducts() {
@@ -438,130 +448,145 @@ function loadProducts() {
 }
 
 // ==========================================
-// DISPLAY & CALCULATIONS
+// DISPLAY & SORTING
 // ==========================================
 
 function updateDisplay() {
-    const resultsSection = document.getElementById('results-section');
-    const chartPlaceholder = document.getElementById('chart-placeholder');
-    const chartCanvas = document.getElementById('comparison-chart');
-    
     if (state.products.length === 0) {
-        resultsSection.classList.add('hidden');
-        chartPlaceholder.classList.remove('hidden');
-        chartCanvas.classList.add('hidden');
+        document.getElementById('chart-placeholder').classList.remove('hidden');
+        document.getElementById('comparison-chart').classList.add('hidden');
         return;
     }
     
-    resultsSection.classList.remove('hidden');
-    chartPlaceholder.classList.add('hidden');
-    chartCanvas.classList.remove('hidden');
-    
-    // Sort by cost per gram (best first)
-    const sorted = [...state.products].sort((a, b) => a.costPerGram - b.costPerGram);
+    // Sort products
+    const sortBy = document.getElementById('sort-by').value;
+    const sorted = sortProducts([...state.products], sortBy);
     const best = sorted[0];
     
     // Update best value card
     document.getElementById('best-product-name').textContent = best.name;
+    document.getElementById('best-product-brand').textContent = best.brand || '';
     document.getElementById('best-cost-per-gram').textContent = `$${best.costPerGram.toFixed(3)}`;
     document.getElementById('best-protein-per-dollar').textContent = `${best.proteinPerDollar.toFixed(1)}g`;
     
+    // Update quick stats
+    document.getElementById('total-products').textContent = state.products.length;
+    
+    const sources = new Set(state.products.map(p => p.source));
+    document.getElementById('diversity-count').textContent = sources.size;
+    
+    // Calculate savings (best vs worst)
+    if (state.products.length > 1) {
+        const avgCost = state.products.reduce((sum, p) => sum + p.costPerGram, 0) / state.products.length;
+        const savings = ((avgCost - best.costPerGram) / avgCost * 100).toFixed(0);
+        document.getElementById('savings-percent').textContent = `${savings}%`;
+    } else {
+        document.getElementById('savings-percent').textContent = '--';
+    }
+    
     // Update diversity
-    updateDiversityScore();
+    updateDiversity();
     
-    // Update table
-    updateProductsTable(sorted);
-    
-    // Update summary
-    updateSummary(sorted);
+    // Update products list
+    updateProductsList(sorted);
     
     // Update chart
     updateChart(sorted);
 }
 
-function updateDiversityScore() {
+function sortProducts(products, sortBy) {
+    switch (sortBy) {
+        case 'cost-asc':
+            return products.sort((a, b) => a.costPerGram - b.costPerGram);
+        case 'cost-desc':
+            return products.sort((a, b) => b.costPerGram - a.costPerGram);
+        case 'protein-desc':
+            return products.sort((a, b) => b.proteinPerDollar - a.proteinPerDollar);
+        case 'name-asc':
+            return products.sort((a, b) => a.name.localeCompare(b.name));
+        default:
+            return products.sort((a, b) => a.costPerGram - b.costPerGram);
+    }
+}
+
+function updateDiversity() {
     const sources = new Set(state.products.map(p => p.source));
     const uniqueSources = [...sources];
     
-    document.getElementById('diversity-score').textContent = uniqueSources.length;
-    
-    const sourcesContainer = document.getElementById('diversity-sources');
-    sourcesContainer.innerHTML = uniqueSources.map(source => {
+    const container = document.getElementById('diversity-sources');
+    container.innerHTML = uniqueSources.map(source => {
         const info = PROTEIN_SOURCES[source] || { label: source, category: 'other', emoji: '📦' };
         return `<span class="source-tag ${info.category}">${info.emoji} ${info.label}</span>`;
     }).join('');
     
-    // Update tip based on diversity
+    // Update tip
     const tip = document.getElementById('diversity-tip');
+    const hasAnimal = uniqueSources.some(s => PROTEIN_SOURCES[s]?.category === 'animal');
+    const hasPlant = uniqueSources.some(s => PROTEIN_SOURCES[s]?.category === 'plant');
+    
     if (uniqueSources.length === 1) {
         tip.textContent = '💡 Try adding products from different sources for better nutrition!';
+    } else if (hasAnimal && hasPlant) {
+        tip.textContent = '🌟 Great mix of animal and plant proteins!';
     } else if (uniqueSources.length < 3) {
         tip.textContent = '👍 Good start! Consider adding more variety.';
     } else {
-        tip.textContent = '🌟 Great diversity! You\'re getting a good mix of protein sources.';
+        tip.textContent = '🌟 Excellent protein diversity!';
     }
 }
 
-function updateProductsTable(sorted) {
-    const tbody = document.getElementById('products-tbody');
+function updateProductsList(sorted) {
+    const container = document.getElementById('products-list');
     const bestId = sorted[0]?.id;
     
-    tbody.innerHTML = sorted.map(product => {
-        const sourceInfo = PROTEIN_SOURCES[product.source] || { label: product.source, emoji: '📦' };
+    container.innerHTML = sorted.map((product, index) => {
+        const sourceInfo = PROTEIN_SOURCES[product.source] || { label: product.source, category: 'other', emoji: '📦' };
         const isBest = product.id === bestId;
         
         return `
-            <tr class="${isBest ? 'best-row' : ''}" data-id="${product.id}">
-                <td>
-                    ${isBest ? '🏆 ' : ''}
-                    <strong>${escapeHtml(product.name)}</strong>
-                    <br><small>$${product.price.toFixed(2)} / ${product.totalProtein}g</small>
-                </td>
-                <td>${sourceInfo.emoji} ${sourceInfo.label}</td>
-                <td><strong>$${product.costPerGram.toFixed(3)}</strong></td>
-                <td>${product.proteinPerDollar.toFixed(1)}g</td>
-                <td>
-                    <button class="delete-btn" onclick="deleteProduct(${product.id})">🗑️</button>
-                </td>
-            </tr>
+            <div class="product-item ${isBest ? 'best' : ''}" data-id="${product.id}" onclick="showProductDetail(${product.id})">
+                <div class="product-rank">${isBest ? '🏆' : index + 1}</div>
+                <div class="product-info">
+                    <div class="product-name">${escapeHtml(product.name)}</div>
+                    <div class="product-meta">
+                        <span class="product-source-badge ${sourceInfo.category}">${sourceInfo.emoji} ${sourceInfo.label}</span>
+                        <span>$${product.price.toFixed(2)}</span>
+                        <span>${product.totalProtein}g protein</span>
+                    </div>
+                </div>
+                <div class="product-values">
+                    <div class="product-cost">$${product.costPerGram.toFixed(3)}<small>/g</small></div>
+                    <div class="product-protein">${product.proteinPerDollar.toFixed(1)}g/$1</div>
+                </div>
+                <button class="product-delete" onclick="event.stopPropagation(); deleteProduct(${product.id})">🗑️</button>
+            </div>
         `;
     }).join('');
 }
 
-function updateSummary(sorted) {
-    document.getElementById('total-products').textContent = state.products.length;
-    
-    // Calculate average cost per gram
-    const avgCostPerGram = state.products.reduce((sum, p) => sum + p.costPerGram, 0) / state.products.length;
-    document.getElementById('avg-cost-per-gram').textContent = `$${avgCostPerGram.toFixed(3)}/g`;
-    
-    // Calculate savings of best vs average
-    if (state.products.length > 1) {
-        const best = sorted[0];
-        const savingsPercent = ((avgCostPerGram - best.costPerGram) / avgCostPerGram * 100).toFixed(0);
-        document.getElementById('savings-vs-avg').textContent = `${savingsPercent}% vs avg`;
-    } else {
-        document.getElementById('savings-vs-avg').textContent = '--';
-    }
-}
-
 function updateChart(sorted) {
     const ctx = document.getElementById('comparison-chart').getContext('2d');
+    const placeholder = document.getElementById('chart-placeholder');
+    const canvas = document.getElementById('comparison-chart');
+    
+    placeholder.classList.add('hidden');
+    canvas.classList.remove('hidden');
     
     // Destroy existing chart
     if (state.chart) {
         state.chart.destroy();
     }
     
-    // Prepare data
-    const labels = sorted.map(p => truncateText(p.name, 15));
-    const proteinPerDollar = sorted.map(p => p.proteinPerDollar);
+    // Prepare data (show protein per dollar - higher is better)
+    const labels = sorted.map(p => truncateText(p.name, 12));
+    const data = sorted.map(p => p.proteinPerDollar);
     
-    // Color based on ranking
+    // Colors
     const colors = sorted.map((_, i) => {
         if (i === 0) return '#f59e0b'; // Gold for best
         if (i === 1) return '#10b981'; // Green for second
-        return '#6b7280'; // Gray for rest
+        if (i === 2) return '#6366f1'; // Purple for third
+        return '#9ca3af'; // Gray for rest
     });
     
     state.chart = new Chart(ctx, {
@@ -569,12 +594,12 @@ function updateChart(sorted) {
         data: {
             labels: labels,
             datasets: [{
-                label: 'Protein per Dollar (g/$)',
-                data: proteinPerDollar,
+                label: 'Grams of Protein per $1',
+                data: data,
                 backgroundColor: colors,
                 borderColor: colors,
-                borderWidth: 1,
-                borderRadius: 6
+                borderWidth: 0,
+                borderRadius: 8
             }]
         },
         options: {
@@ -585,12 +610,21 @@ function updateChart(sorted) {
                     display: false
                 },
                 tooltip: {
+                    backgroundColor: '#1f2937',
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    padding: 12,
+                    cornerRadius: 8,
                     callbacks: {
+                        title: function(context) {
+                            return sorted[context[0].dataIndex].name;
+                        },
                         label: function(context) {
                             const product = sorted[context.dataIndex];
                             return [
-                                `${context.parsed.y.toFixed(1)}g per $1`,
-                                `$${product.costPerGram.toFixed(3)} per gram`
+                                `${context.parsed.y.toFixed(1)}g protein per $1`,
+                                `$${product.costPerGram.toFixed(3)} per gram`,
+                                `$${product.price.toFixed(2)} total`
                             ];
                         }
                     }
@@ -599,20 +633,139 @@ function updateChart(sorted) {
             scales: {
                 y: {
                     beginAtZero: true,
+                    grid: {
+                        color: '#f3f4f6'
+                    },
                     title: {
                         display: true,
-                        text: 'Grams of Protein per Dollar'
+                        text: 'Protein per Dollar (g/$)',
+                        font: { size: 12, weight: '600' },
+                        color: '#6b7280'
                     }
                 },
                 x: {
+                    grid: {
+                        display: false
+                    },
                     ticks: {
                         maxRotation: 45,
-                        minRotation: 0
+                        minRotation: 0,
+                        font: { size: 11 }
                     }
                 }
             }
         }
     });
+}
+
+// ==========================================
+// PRODUCT DETAIL MODAL
+// ==========================================
+
+function showProductDetail(id) {
+    const product = state.products.find(p => p.id === id);
+    if (!product) return;
+    
+    const sourceInfo = PROTEIN_SOURCES[product.source] || { label: product.source, emoji: '📦' };
+    
+    const modal = document.getElementById('product-modal');
+    const body = document.getElementById('modal-body');
+    
+    body.innerHTML = `
+        <div class="modal-product">
+            <h2>${escapeHtml(product.name)}</h2>
+            ${product.brand ? `<p class="modal-brand">${escapeHtml(product.brand)}</p>` : ''}
+            
+            <div class="modal-stats">
+                <div class="modal-stat highlight">
+                    <span class="ms-label">Cost per Gram</span>
+                    <span class="ms-value">$${product.costPerGram.toFixed(3)}</span>
+                </div>
+                <div class="modal-stat">
+                    <span class="ms-label">Protein per $1</span>
+                    <span class="ms-value">${product.proteinPerDollar.toFixed(1)}g</span>
+                </div>
+            </div>
+            
+            <div class="modal-details">
+                <div class="md-row">
+                    <span>Source:</span>
+                    <strong>${sourceInfo.emoji} ${sourceInfo.label}</strong>
+                </div>
+                <div class="md-row">
+                    <span>Price:</span>
+                    <strong>$${product.price.toFixed(2)}</strong>
+                </div>
+                ${product.containerSize ? `
+                <div class="md-row">
+                    <span>Container:</span>
+                    <strong>${product.containerSize}</strong>
+                </div>
+                ` : ''}
+                <div class="md-row">
+                    <span>Total Protein:</span>
+                    <strong>${product.totalProtein}g</strong>
+                </div>
+                ${product.servingsCount ? `
+                <div class="md-row">
+                    <span>Servings:</span>
+                    <strong>${product.servingsCount}</strong>
+                </div>
+                <div class="md-row">
+                    <span>Protein/Serving:</span>
+                    <strong>${product.proteinPerServing}g</strong>
+                </div>
+                ` : ''}
+                ${product.servingSize ? `
+                <div class="md-row">
+                    <span>Serving Size:</span>
+                    <strong>${product.servingSize}</strong>
+                </div>
+                ` : ''}
+            </div>
+            
+            ${product.notes ? `
+            <div class="modal-notes">
+                <strong>Notes:</strong>
+                <p>${escapeHtml(product.notes)}</p>
+            </div>
+            ` : ''}
+            
+            <button class="modal-delete-btn" onclick="deleteProduct(${product.id}); closeModal();">
+                🗑️ Delete Product
+            </button>
+        </div>
+    `;
+    
+    // Add modal styles if not already added
+    if (!document.getElementById('modal-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'modal-styles';
+        styles.textContent = `
+            .modal-product h2 { font-size: 20px; margin-bottom: 4px; }
+            .modal-brand { color: #6b7280; font-size: 14px; margin-bottom: 20px; }
+            .modal-stats { display: flex; gap: 16px; margin-bottom: 24px; }
+            .modal-stat { flex: 1; padding: 16px; background: #f9fafb; border-radius: 8px; text-align: center; }
+            .modal-stat.highlight { background: linear-gradient(135deg, #ecfdf5, #d1fae5); }
+            .ms-label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+            .ms-value { font-size: 24px; font-weight: 800; color: #047857; }
+            .modal-details { margin-bottom: 20px; }
+            .md-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+            .md-row span { color: #6b7280; }
+            .modal-notes { padding: 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+            .modal-notes strong { display: block; margin-bottom: 4px; }
+            .modal-notes p { color: #4b5563; margin: 0; }
+            .modal-delete-btn { width: 100%; padding: 12px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+            .modal-delete-btn:hover { background: #fee2e2; }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    modal.classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('product-modal').classList.add('hidden');
 }
 
 // ==========================================
@@ -622,11 +775,12 @@ function updateChart(sorted) {
 function showError(msg) {
     const el = document.getElementById('error-message');
     el.textContent = '❌ ' + msg;
+    el.style.background = '#fef2f2';
+    el.style.borderColor = '#fecaca';
+    el.style.color = '#dc2626';
     el.classList.remove('hidden');
     
-    setTimeout(() => {
-        el.classList.add('hidden');
-    }, 5000);
+    setTimeout(() => el.classList.add('hidden'), 5000);
 }
 
 function hideError() {
@@ -641,12 +795,7 @@ function showSuccess(msg) {
     el.style.color = '#15803d';
     el.classList.remove('hidden');
     
-    setTimeout(() => {
-        el.classList.add('hidden');
-        el.style.background = '';
-        el.style.borderColor = '';
-        el.style.color = '';
-    }, 3000);
+    setTimeout(() => el.classList.add('hidden'), 3000);
 }
 
 function escapeHtml(text) {
@@ -660,5 +809,7 @@ function truncateText(text, maxLength) {
     return text.substring(0, maxLength) + '...';
 }
 
-// Make deleteProduct available globally for onclick
+// Make functions available globally
 window.deleteProduct = deleteProduct;
+window.showProductDetail = showProductDetail;
+window.closeModal = closeModal;

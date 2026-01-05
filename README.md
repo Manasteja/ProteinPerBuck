@@ -1,99 +1,90 @@
-# 🥩 ProteinValue - Smart Protein Shopping
+# 🥩 ProteinValue v2 - Smart Protein Shopping
 
 **Compare protein products by cost per gram and find the best value.**
 
-A Progressive Web App (PWA) that helps shoppers make informed decisions about protein purchases.
+A world-class Progressive Web App (PWA) that helps shoppers make informed decisions about protein purchases.
 
 ---
 
 ## ✨ Features
 
-### Core Functionality
-- 📷 **Camera OCR** - Scan nutrition labels to auto-fill values (uses free Tesseract.js)
-- ✏️ **Manual Entry** - Type in product details
-- 💰 **Cost Analysis** - See cost per gram and protein per dollar
-- 🏆 **Best Value** - Instantly identify the best deal
-- 🌈 **Diversity Tracking** - Track variety of protein sources
-- 📊 **Visual Comparison** - Bar chart comparing all products
+### 🎯 Core Features
+- **📷 Photo Reference** - Capture product & nutrition label photos as visual reference while entering data
+- **💰 Cost Analysis** - Instant cost per gram and protein per dollar calculations
+- **🏆 Best Value Finder** - Automatically identifies the best deal
+- **🌈 Diversity Tracking** - Track variety of protein sources for balanced nutrition
+- **📊 Visual Comparison** - Beautiful bar chart comparing all products
+- **💾 Local Storage** - Products saved locally, works offline
 
-### Technical Features
-- 📱 **PWA** - Install on home screen like a native app
-- 💾 **Offline Storage** - Products saved locally
-- 🔒 **Privacy First** - All data stays on your device
-- 🌐 **Cross-Platform** - Works on any device with a browser
+### 💪 Bulk Buying Support
+- Container size tracking (lb, kg, oz, g)
+- Servings per container
+- Protein per serving
+- Auto-calculate total protein
+
+### 🎨 World-Class UX
+- **3-Step Wizard** - Guided flow: Photos → Details → Compare
+- **Live Calculations** - See cost per gram update as you type
+- **Responsive Design** - Perfect on mobile, tablet, and desktop
+- **PWA Ready** - Install on home screen like a native app
 
 ---
 
 ## 🚀 Quick Start
 
-### Option 1: Run Locally (5 minutes)
+### Deploy to GitHub Pages (FREE)
 
-1. **Download files** to a folder
-2. **Start a local server:**
-   ```bash
-   # Python
-   python -m http.server 8000
-   
-   # Node.js
-   npx serve
-   
-   # Or just double-click index.html
-   ```
-3. **Open** http://localhost:8000
+1. **Create Repository**
+   - Go to github.com → New Repository
+   - Name: `proteinvalue`
+   - Public → Create
 
-### Option 2: Deploy to Web (10 minutes)
+2. **Upload Files**
+   - Add file → Upload files
+   - Drag all 6 files
+   - Commit changes
 
-**Netlify (Easiest):**
-1. Go to https://netlify.com
-2. Drag the folder onto "Deploy manually"
-3. Done! Get your URL
+3. **Enable Pages**
+   - Settings → Pages
+   - Source: Deploy from branch
+   - Branch: main / root
+   - Save
 
-**Vercel:**
-```bash
-npm install -g vercel
-vercel
-```
-
-**GitHub Pages:**
-1. Create repository
-2. Push files
-3. Enable Pages in settings
+4. **Get Your URL**
+   - Wait 1-2 minutes
+   - Your site: `https://yourusername.github.io/proteinvalue/`
 
 ---
 
 ## 📱 How to Use
 
-### Manual Entry
-1. Enter product name
-2. Enter price
-3. Enter total protein (or servings × protein/serving)
-4. Select protein source type
-5. Click "Add Product"
+### Step 1: Capture Photos (Optional)
+- 📦 Take photo of product front (for reference)
+- 📋 Take photo of nutrition label (recommended)
+- Photos help you reference values while entering data
 
-### Camera Mode (OCR)
-1. Switch to "📷 Camera" mode
-2. Click "Start Camera"
-3. Point at nutrition label
-4. Click "Capture Label"
-5. Review detected values
-6. Add price and source manually
-7. Click "Add Product"
+### Step 2: Enter Details
+- Enter product name and brand
+- Select protein source type
+- Enter price and container size
+- Enter servings and protein per serving (OR total protein)
+- Watch live calculations update!
 
-### Comparing Products
-- Products are automatically ranked by cost per gram
-- 🏆 Best value is highlighted
-- View diversity of protein sources
-- Check summary statistics
+### Step 3: Compare
+- View ranked comparison of all products
+- 🏆 Best value highlighted at top
+- See diversity of protein sources
+- Tap any product for full details
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Files
 
 ```
-protein-value/
-├── index.html          # Main HTML structure
-├── styles.css          # Responsive styling
-├── app.js              # Core JavaScript logic + OCR
+proteinvalue/
+├── index.html          # Main app structure
+├── styles.css          # World-class styling
+├── app.js              # App logic & calculations
 ├── manifest.json       # PWA configuration
 ├── service-worker.js   # Offline support
 └── README.md           # This file
@@ -101,72 +92,65 @@ protein-value/
 
 ---
 
-## 🔧 Customization
+## 🎯 Why This Design?
 
-### Add More Protein Sources
-Edit `app.js`, find `PROTEIN_SOURCES`:
-```javascript
-const PROTEIN_SOURCES = {
-    // Add your custom sources
-    'cricket': { label: 'Cricket', category: 'other', emoji: '🦗' },
-    // ...
-};
-```
+### Camera as Reference (Not OCR)
+- **Problem:** OCR on nutrition labels is unreliable (complex layouts, small text)
+- **Solution:** Use photos as visual reference while entering data manually
+- **Benefit:** 100% accuracy, no API costs, works offline
 
-### Change Theme Colors
-Edit `styles.css`:
-```css
-:root {
-    --primary: #059669;      /* Main green */
-    --primary-dark: #047857; /* Darker green */
-    /* ... */
-}
-```
+### Step-by-Step Wizard
+- **Problem:** Long forms are overwhelming
+- **Solution:** Break into 3 clear steps
+- **Benefit:** Better UX, higher completion rate
+
+### Bulk Buying Support
+- **Problem:** Comparing different sizes is confusing
+- **Solution:** Track container size, servings, serving size
+- **Benefit:** Accurate comparison across any product size
 
 ---
 
-## 💡 Tips for Best Results
+## 💡 Pro Tips
 
-### OCR Tips
-- Use good lighting
-- Hold camera steady
-- Focus on the Nutrition Facts section
-- Works best with clear, printed labels
+| Tip | Why |
+|-----|-----|
+| Compare same-day prices | Prices change; compare at same time |
+| Include tax in price | For accurate total cost |
+| Check protein per serving | Some brands use small servings |
+| Consider amino acids | Not all proteins are complete |
+| Whole foods often win | Chicken, eggs often cheaper than powder |
 
-### Value Comparison Tips
-- Compare same serving sizes when possible
-- Consider amino acid profiles for complete proteins
-- Factor in taste/mixability (not just cost!)
-- Whole foods often beat powders on cost per gram
+---
+
+## 🔒 Privacy
+
+- ✅ All data stays on your device
+- ✅ No accounts required
+- ✅ No tracking or analytics
+- ✅ Photos never uploaded (stored locally only)
+- ✅ Optional: Share anonymously to help others
 
 ---
 
 ## 🛣️ Roadmap
 
-### Version 1.0 (Current)
-- ✅ Manual product entry
-- ✅ Camera OCR for labels
-- ✅ Cost per gram calculation
+### Current (v2)
+- ✅ Step-by-step wizard
+- ✅ Photo reference system
+- ✅ Bulk buying support
 - ✅ Diversity tracking
-- ✅ Local storage
+- ✅ Beautiful comparison chart
+- ✅ Product detail modal
 - ✅ PWA support
 
 ### Future Ideas
 - [ ] Barcode scanning (UPC lookup)
 - [ ] Price history tracking
 - [ ] Community price database
-- [ ] Amazon/Walmart price lookup
+- [ ] Export comparisons as PDF
 - [ ] Amino acid profile comparison
-- [ ] Export/share comparisons
-
----
-
-## 🔒 Privacy
-
-- **All data stays on your device**
-- No accounts required
-- No tracking or analytics
-- Optional: Share anonymously to help others (checkbox)
+- [ ] Meal planning integration
 
 ---
 
@@ -176,12 +160,4 @@ MIT License - Free to use, modify, distribute.
 
 ---
 
-## 🙏 Acknowledgments
-
-- **Tesseract.js** - Free OCR in the browser
-- **Chart.js** - Beautiful charts
-- **MileSaver** - Design inspiration
-
----
-
-**Built with ❤️ for smart shoppers everywhere**
+**Built with ❤️ for smart shoppers**
