@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="description" content="ProteinValue - Compare protein products by cost per gram">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥩</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥩</text></svg>">
+    
+    <title>ProteinValue - Smart Protein Shopping</title>
+    
+    <!-- Tesseract.js for OCR (FREE, runs in browser) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🥩 ProteinValue</h1>
+                <p class="tagline">Compare Products, Maximize Value</p>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <main class="main-layout">
+            <!-- LEFT SIDEBAR -->
+            <aside class="sidebar" id="sidebar">
+                <!-- Input Card -->
+                <div class="card">
+                    <h2 class="card-title">📦 Add Product</h2>
+                    
+                    <!-- Input Mode Toggle -->
+                    <div class="input-mode-toggle">
+                        <label>
+                            <input type="radio" name="input-mode" value="manual" checked>
+                            <span>✏️ Manual</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="input-mode" value="camera">
+                            <span>📷 Camera</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Manual Input -->
+                    <div id="manual-inputs" class="input-container">
+                        <div class="input-group">
+                            <label>Product Name</label>
+                            <input type="text" id="product-name" placeholder="e.g., Optimum Nutrition Whey" autocomplete="off">
+                        </div>
+                        
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>Price ($)</label>
+                                <input type="number" id="product-price" placeholder="29.99" step="0.01" min="0">
+                            </div>
+                            <div class="input-group">
+                                <label>Total Protein (g)</label>
+                                <input type="number" id="total-protein" placeholder="720" step="1" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>Servings</label>
+                                <input type="number" id="servings" placeholder="24" step="1" min="1">
+                            </div>
+                            <div class="input-group">
+                                <label>Protein/Serving (g)</label>
+                                <input type="number" id="protein-per-serving" placeholder="30" step="0.1" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Protein Source</label>
+                            <select id="protein-source">
+                                <option value="">-- Select Source --</option>
+                                <optgroup label="Animal-Based">
+                                    <option value="whey">Whey</option>
+                                    <option value="casein">Casein</option>
+                                    <option value="egg">Egg White</option>
+                                    <option value="beef">Beef</option>
+                                    <option value="chicken">Chicken</option>
+                                    <option value="fish">Fish</option>
+                                    <option value="dairy">Dairy (Milk/Yogurt)</option>
+                                </optgroup>
+                                <optgroup label="Plant-Based">
+                                    <option value="pea">Pea</option>
+                                    <option value="soy">Soy</option>
+                                    <option value="rice">Rice</option>
+                                    <option value="hemp">Hemp</option>
+                                    <option value="peanut">Peanut</option>
+                                    <option value="blend-plant">Plant Blend</option>
+                                </optgroup>
+                                <optgroup label="Mixed/Other">
+                                    <option value="blend-mixed">Mixed Blend</option>
+                                    <option value="collagen">Collagen</option>
+                                    <option value="other">Other</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        
+                        <small class="hint">💡 Enter total protein OR (servings × protein/serving)</small>
+                    </div>
+                    
+                    <!-- Camera Input -->
+                    <div id="camera-inputs" class="input-container hidden">
+                        <div class="camera-section">
+                            <div id="camera-preview" class="camera-preview">
+                                <video id="video" autoplay playsinline></video>
+                                <canvas id="canvas" class="hidden"></canvas>
+                                <img id="captured-image" class="hidden" alt="Captured label">
+                            </div>
+                            
+                            <div class="camera-controls">
+                                <button type="button" id="start-camera-btn" class="camera-btn">
+                                    📷 Start Camera
+                                </button>
+                                <button type="button" id="capture-btn" class="camera-btn success hidden">
+                                    📸 Capture Label
+                                </button>
+                                <button type="button" id="retake-btn" class="camera-btn hidden">
+                                    🔄 Retake
+                                </button>
+                            </div>
+                            
+                            <div id="ocr-status" class="ocr-status hidden">
+                                <div class="spinner-small"></div>
+                                <span>Reading nutrition label...</span>
+                            </div>
+                            
+                            <div id="ocr-results" class="ocr-results hidden">
+                                <h4>📋 Detected Values</h4>
+                                <div class="detected-values">
+                                    <div class="detected-item">
+                                        <span>Protein:</span>
+                                        <strong id="detected-protein">--</strong>
+                                    </div>
+                                    <div class="detected-item">
+                                        <span>Servings:</span>
+                                        <strong id="detected-servings">--</strong>
+                                    </div>
+                                </div>
+                                <button type="button" id="use-detected-btn" class="use-detected-btn">
+                                    ✅ Use These Values
+                                </button>
+                                <small class="hint">You'll still need to enter price & source manually</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Manual fields for camera mode -->
+                        <div class="input-group">
+                            <label>Product Name</label>
+                            <input type="text" id="camera-product-name" placeholder="e.g., Optimum Nutrition Whey" autocomplete="off">
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>Price ($)</label>
+                                <input type="number" id="camera-product-price" placeholder="29.99" step="0.01" min="0">
+                            </div>
+                            <div class="input-group">
+                                <label>Total Protein (g)</label>
+                                <input type="number" id="camera-total-protein" placeholder="Auto-filled" step="1" min="0">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Protein Source</label>
+                            <select id="camera-protein-source">
+                                <option value="">-- Select Source --</option>
+                                <optgroup label="Animal-Based">
+                                    <option value="whey">Whey</option>
+                                    <option value="casein">Casein</option>
+                                    <option value="egg">Egg White</option>
+                                    <option value="beef">Beef</option>
+                                    <option value="chicken">Chicken</option>
+                                    <option value="fish">Fish</option>
+                                    <option value="dairy">Dairy (Milk/Yogurt)</option>
+                                </optgroup>
+                                <optgroup label="Plant-Based">
+                                    <option value="pea">Pea</option>
+                                    <option value="soy">Soy</option>
+                                    <option value="rice">Rice</option>
+                                    <option value="hemp">Hemp</option>
+                                    <option value="peanut">Peanut</option>
+                                    <option value="blend-plant">Plant Blend</option>
+                                </optgroup>
+                                <optgroup label="Mixed/Other">
+                                    <option value="blend-mixed">Mixed Blend</option>
+                                    <option value="collagen">Collagen</option>
+                                    <option value="other">Other</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Community Contribution Toggle -->
+                    <div class="contribution-toggle">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="contribute-data">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-text">Share anonymously to help others</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Add Button -->
+                <button id="add-product-btn" class="add-btn">
+                    <span class="icon">➕</span> Add Product
+                </button>
+
+                <!-- Error Message -->
+                <div id="error-message" class="error-message hidden"></div>
+
+                <!-- RESULTS SECTION -->
+                <div id="results-section" class="results-section hidden">
+                    <!-- Best Value Card -->
+                    <div id="best-value-card" class="best-value-card">
+                        <div class="best-header">🏆 Best Value</div>
+                        <div class="best-product" id="best-product-name">--</div>
+                        <div class="best-stats">
+                            <div class="best-stat">
+                                <span class="stat-label">Cost/gram</span>
+                                <span class="stat-value" id="best-cost-per-gram">--</span>
+                            </div>
+                            <div class="best-stat">
+                                <span class="stat-label">Protein/$</span>
+                                <span class="stat-value" id="best-protein-per-dollar">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Diversity Score -->
+                    <div id="diversity-card" class="diversity-card">
+                        <div class="diversity-header">🌈 Protein Diversity</div>
+                        <div class="diversity-score">
+                            <div class="score-circle" id="diversity-score">0</div>
+                            <div class="score-label">sources</div>
+                        </div>
+                        <div class="diversity-sources" id="diversity-sources">
+                            <!-- Filled dynamically -->
+                        </div>
+                        <small class="diversity-tip" id="diversity-tip">Add products from different sources for better nutrition</small>
+                    </div>
+
+                    <!-- Products Table -->
+                    <div class="products-table-card">
+                        <div class="table-header">
+                            <h3>📊 Comparison</h3>
+                            <button id="clear-all-btn" class="clear-btn">🗑️ Clear All</button>
+                        </div>
+                        <div class="table-container">
+                            <table id="products-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Source</th>
+                                        <th>$/gram</th>
+                                        <th>g/$</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="products-tbody">
+                                    <!-- Filled dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div class="summary-card">
+                        <div class="summary-header">📈 Summary</div>
+                        <div class="summary-row">
+                            <span>Products Compared:</span>
+                            <strong id="total-products">0</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Avg Cost/gram:</span>
+                            <strong id="avg-cost-per-gram">--</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Best Deal Saves:</span>
+                            <strong id="savings-vs-avg" class="highlight">--</strong>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- RIGHT: VISUALIZATION -->
+            <section class="viz-section" id="viz-section">
+                <div class="viz-container">
+                    <div class="chart-placeholder" id="chart-placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Add products to see comparison chart</p>
+                    </div>
+                    <canvas id="comparison-chart" class="hidden"></canvas>
+                </div>
+                
+                <!-- Quick Tips -->
+                <div class="tips-card">
+                    <h3>💡 Quick Tips</h3>
+                    <ul class="tips-list">
+                        <li><strong>Whey:</strong> Fast-absorbing, great post-workout</li>
+                        <li><strong>Casein:</strong> Slow-release, ideal before bed</li>
+                        <li><strong>Plant blends:</strong> Complete amino profile when combined</li>
+                        <li><strong>Whole foods:</strong> Often cheaper per gram than powders!</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="app.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .catch(err => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
