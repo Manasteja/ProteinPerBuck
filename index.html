@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <meta name="description" content="ProteinValue - Compare protein products by cost per gram">
+    <meta name="description" content="ProteinValue - Compare protein products by cost per gram with barcode scanning">
     <meta name="theme-color" content="#059669">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥩</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥩</text></svg>">
     
     <title>ProteinValue - Smart Protein Shopping</title>
+    
+    <!-- Barcode Scanner Library (FREE) -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,7 +24,12 @@
         <header class="header">
             <div class="header-content">
                 <h1>🥩 ProteinValue</h1>
-                <p class="tagline">Compare Products, Maximize Value</p>
+                <p class="tagline">Scan, Compare, Save Money</p>
+            </div>
+            <div class="header-actions">
+                <button id="my-list-btn" class="header-btn" title="My Favorites">
+                    ❤️ <span class="badge hidden" id="favorites-count">0</span>
+                </button>
             </div>
         </header>
 
@@ -29,109 +37,70 @@
         <main class="main-layout">
             <!-- LEFT SIDEBAR -->
             <aside class="sidebar" id="sidebar">
-                <!-- Step Indicator -->
-                <div class="step-indicator">
-                    <div class="step active" data-step="1">
-                        <span class="step-num">1</span>
-                        <span class="step-label">Photos</span>
-                    </div>
-                    <div class="step-line"></div>
-                    <div class="step" data-step="2">
-                        <span class="step-num">2</span>
-                        <span class="step-label">Details</span>
-                    </div>
-                    <div class="step-line"></div>
-                    <div class="step" data-step="3">
-                        <span class="step-num">3</span>
-                        <span class="step-label">Compare</span>
+                <!-- Input Method Toggle -->
+                <div class="method-toggle">
+                    <button class="method-btn active" data-method="manual">
+                        ✏️ Manual Entry
+                    </button>
+                    <button class="method-btn" data-method="barcode">
+                        📷 Scan Barcode
+                    </button>
+                </div>
+
+                <!-- BARCODE SCANNER -->
+                <div id="barcode-section" class="barcode-section hidden">
+                    <div class="card">
+                        <h2 class="card-title">📷 Scan Barcode</h2>
+                        <p class="card-description">Point camera at product barcode</p>
+                        
+                        <div id="barcode-reader" class="barcode-reader"></div>
+                        
+                        <div id="scan-status" class="scan-status hidden">
+                            <div class="spinner-small"></div>
+                            <span>Looking up product...</span>
+                        </div>
+                        
+                        <div id="scan-result" class="scan-result hidden">
+                            <div class="scan-success">✅ Product Found!</div>
+                            <div class="scan-product-name" id="scanned-product-name">--</div>
+                            <button id="use-scanned-btn" class="btn-primary">Use This Product</button>
+                            <button id="scan-again-btn" class="btn-secondary">Scan Another</button>
+                        </div>
+                        
+                        <div id="scan-error" class="scan-error hidden">
+                            <div class="error-icon">❌</div>
+                            <div class="error-text">Product not found in database</div>
+                            <button id="manual-entry-btn" class="btn-secondary">Enter Manually</button>
+                        </div>
+                        
+                        <small class="hint">💡 Uses Open Food Facts database (free & open source)</small>
                     </div>
                 </div>
 
-                <!-- STEP 1: Photo Capture -->
-                <div id="step-1" class="step-content">
+                <!-- MANUAL ENTRY FORM -->
+                <div id="manual-section" class="manual-section">
                     <div class="card">
-                        <h2 class="card-title">📸 Capture Product Photos</h2>
-                        <p class="card-description">Take photos as reference while entering details</p>
+                        <div class="card-header">
+                            <h2 class="card-title" id="form-title">➕ Add Product</h2>
+                            <button id="cancel-edit-btn" class="cancel-btn hidden">✕ Cancel</button>
+                        </div>
                         
-                        <!-- Product Photo -->
-                        <div class="photo-section">
-                            <div class="photo-label">
-                                <span class="photo-icon">📦</span>
-                                <span>Product Front</span>
-                                <span class="optional-badge">Optional</span>
-                            </div>
-                            <div class="photo-capture" id="product-photo-area">
-                                <input type="file" id="product-photo-input" accept="image/*" capture="environment" class="hidden">
-                                <div class="photo-preview" id="product-photo-preview">
-                                    <button type="button" class="capture-btn" id="capture-product-btn">
-                                        <span class="btn-icon">📷</span>
-                                        <span>Take Photo</span>
-                                    </button>
-                                </div>
-                                <img id="product-photo-img" class="captured-photo hidden" alt="Product photo">
-                                <button type="button" id="retake-product-btn" class="retake-btn hidden">🔄 Retake</button>
-                            </div>
-                        </div>
-
-                        <!-- Nutrition Label Photo -->
-                        <div class="photo-section">
-                            <div class="photo-label">
-                                <span class="photo-icon">📋</span>
-                                <span>Nutrition Label</span>
-                                <span class="recommended-badge">Recommended</span>
-                            </div>
-                            <div class="photo-capture" id="label-photo-area">
-                                <input type="file" id="label-photo-input" accept="image/*" capture="environment" class="hidden">
-                                <div class="photo-preview" id="label-photo-preview">
-                                    <button type="button" class="capture-btn" id="capture-label-btn">
-                                        <span class="btn-icon">📷</span>
-                                        <span>Take Photo</span>
-                                    </button>
-                                </div>
-                                <img id="label-photo-img" class="captured-photo hidden" alt="Nutrition label">
-                                <button type="button" id="retake-label-btn" class="retake-btn hidden">🔄 Retake</button>
-                            </div>
-                        </div>
-
-                        <div class="photo-tip">
-                            💡 Photos help you reference values while entering. You can also skip and enter manually.
-                        </div>
-                    </div>
-
-                    <div class="step-buttons">
-                        <button type="button" class="btn-secondary" id="skip-photos-btn">Skip Photos</button>
-                        <button type="button" class="btn-primary" id="next-to-step-2">Next: Enter Details →</button>
-                    </div>
-                </div>
-
-                <!-- STEP 2: Product Details -->
-                <div id="step-2" class="step-content hidden">
-                    <div class="card">
-                        <h2 class="card-title">✏️ Product Details</h2>
-                        
-                        <!-- Photo Reference (if taken) -->
-                        <div id="photo-reference" class="photo-reference hidden">
-                            <div class="reference-header">
-                                <span>📸 Your Photos</span>
-                                <button type="button" id="toggle-photos-btn" class="toggle-btn">Hide</button>
-                            </div>
-                            <div class="reference-images" id="reference-images">
-                                <img id="ref-product-img" class="ref-img hidden" alt="Product">
-                                <img id="ref-label-img" class="ref-img hidden" alt="Label">
-                            </div>
-                        </div>
-
                         <!-- Basic Info -->
                         <div class="form-section">
-                            <h3 class="section-title">Basic Info</h3>
                             <div class="input-group">
                                 <label>Product Name *</label>
-                                <input type="text" id="product-name" placeholder="e.g., Optimum Nutrition Gold Standard Whey" autocomplete="off">
+                                <input type="text" id="product-name" placeholder="e.g., Optimum Nutrition Gold Standard" autocomplete="off">
                             </div>
                             
-                            <div class="input-group">
-                                <label>Brand</label>
-                                <input type="text" id="product-brand" placeholder="e.g., Optimum Nutrition" autocomplete="off">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label>Brand</label>
+                                    <input type="text" id="product-brand" placeholder="e.g., Optimum Nutrition" autocomplete="off">
+                                </div>
+                                <div class="input-group">
+                                    <label>Barcode (UPC)</label>
+                                    <input type="text" id="product-barcode" placeholder="Optional" autocomplete="off">
+                                </div>
                             </div>
 
                             <div class="input-group">
@@ -175,6 +144,23 @@
                                     <input type="number" id="product-price" placeholder="29.99" step="0.01" min="0">
                                 </div>
                                 <div class="input-group">
+                                    <label>Store</label>
+                                    <select id="product-store">
+                                        <option value="">-- Optional --</option>
+                                        <option value="amazon">Amazon</option>
+                                        <option value="costco">Costco</option>
+                                        <option value="walmart">Walmart</option>
+                                        <option value="target">Target</option>
+                                        <option value="gnc">GNC</option>
+                                        <option value="vitaminshop">Vitamin Shoppe</option>
+                                        <option value="wholefoods">Whole Foods</option>
+                                        <option value="traderjoes">Trader Joe's</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="input-row">
+                                <div class="input-group">
                                     <label>Container Size</label>
                                     <div class="input-with-unit">
                                         <input type="number" id="container-size" placeholder="2" step="0.1" min="0">
@@ -183,7 +169,6 @@
                                             <option value="kg">kg</option>
                                             <option value="oz">oz</option>
                                             <option value="g">g</option>
-                                            <option value="count">count</option>
                                         </select>
                                     </div>
                                 </div>
@@ -194,55 +179,31 @@
                         <div class="form-section">
                             <h3 class="section-title">💪 Protein Content</h3>
                             
-                            <!-- Calculation Method Toggle -->
-                            <div class="calc-toggle">
-                                <label class="calc-option">
-                                    <input type="radio" name="calc-method" value="per-serving" checked>
-                                    <span>Per Serving</span>
-                                </label>
-                                <label class="calc-option">
-                                    <input type="radio" name="calc-method" value="total">
-                                    <span>Total Known</span>
-                                </label>
-                            </div>
-
-                            <!-- Per Serving Method -->
-                            <div id="per-serving-inputs" class="calc-inputs">
-                                <div class="input-row">
-                                    <div class="input-group">
-                                        <label>Servings per Container *</label>
-                                        <input type="number" id="servings-count" placeholder="30" step="1" min="1">
-                                    </div>
-                                    <div class="input-group">
-                                        <label>Protein per Serving (g) *</label>
-                                        <input type="number" id="protein-per-serving" placeholder="24" step="0.1" min="0">
-                                    </div>
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label>Servings per Container *</label>
+                                    <input type="number" id="servings-count" placeholder="30" step="1" min="1">
                                 </div>
                                 <div class="input-group">
-                                    <label>Serving Size</label>
-                                    <div class="input-with-unit">
-                                        <input type="number" id="serving-size" placeholder="33" step="0.1" min="0">
-                                        <select id="serving-unit">
-                                            <option value="g">g</option>
-                                            <option value="scoop">scoop</option>
-                                            <option value="oz">oz</option>
-                                            <option value="cup">cup</option>
-                                            <option value="tbsp">tbsp</option>
-                                            <option value="piece">piece</option>
-                                        </select>
-                                    </div>
+                                    <label>Protein per Serving (g) *</label>
+                                    <input type="number" id="protein-per-serving" placeholder="24" step="0.1" min="0">
+                                </div>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label>Serving Size</label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="serving-size" placeholder="33" step="0.1" min="0">
+                                    <select id="serving-unit">
+                                        <option value="g">g</option>
+                                        <option value="scoop">scoop</option>
+                                        <option value="oz">oz</option>
+                                        <option value="piece">piece</option>
+                                    </select>
                                 </div>
                             </div>
 
-                            <!-- Total Known Method -->
-                            <div id="total-inputs" class="calc-inputs hidden">
-                                <div class="input-group">
-                                    <label>Total Protein in Container (g) *</label>
-                                    <input type="number" id="total-protein" placeholder="720" step="1" min="0">
-                                </div>
-                            </div>
-
-                            <!-- Calculated Total -->
+                            <!-- Live Calculation -->
                             <div class="calculated-box" id="calculated-box">
                                 <div class="calc-row">
                                     <span>Total Protein:</span>
@@ -261,26 +222,20 @@
 
                         <!-- Notes -->
                         <div class="form-section">
-                            <h3 class="section-title">📝 Notes (Optional)</h3>
                             <div class="input-group">
-                                <textarea id="product-notes" placeholder="e.g., Great taste, mixes well, bought at Costco..." rows="2"></textarea>
+                                <label>Notes (Optional)</label>
+                                <textarea id="product-notes" placeholder="e.g., Great taste, bought on sale..." rows="2"></textarea>
                             </div>
-                        </div>
-
-                        <!-- Community Contribution -->
-                        <div class="contribution-toggle">
-                            <label class="toggle-label">
-                                <input type="checkbox" id="contribute-data">
-                                <span class="toggle-slider"></span>
-                                <span class="toggle-text">Share anonymously to help other shoppers</span>
-                            </label>
                         </div>
                     </div>
 
-                    <div class="step-buttons">
-                        <button type="button" class="btn-secondary" id="back-to-step-1">← Back</button>
-                        <button type="button" class="btn-primary" id="add-product-btn">
-                            ➕ Add Product & Compare
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <button id="add-product-btn" class="btn-primary btn-large">
+                            ➕ Add Product
+                        </button>
+                        <button id="update-product-btn" class="btn-primary btn-large hidden">
+                            💾 Save Changes
                         </button>
                     </div>
 
@@ -288,13 +243,8 @@
                     <div id="error-message" class="error-message hidden"></div>
                 </div>
 
-                <!-- STEP 3: Comparison Results -->
-                <div id="step-3" class="step-content hidden">
-                    <!-- Add Another Button -->
-                    <button type="button" class="add-another-btn" id="add-another-btn">
-                        ➕ Add Another Product
-                    </button>
-
+                <!-- RESULTS SECTION -->
+                <div id="results-section" class="results-section hidden">
                     <!-- Best Value Card -->
                     <div id="best-value-card" class="best-value-card">
                         <div class="best-header">🏆 Best Value</div>
@@ -312,7 +262,7 @@
                         </div>
                     </div>
 
-                    <!-- Quick Stats Row -->
+                    <!-- Quick Stats -->
                     <div class="quick-stats">
                         <div class="quick-stat">
                             <span class="qs-value" id="total-products">0</span>
@@ -329,12 +279,10 @@
                     </div>
 
                     <!-- Diversity Card -->
-                    <div id="diversity-card" class="diversity-card">
+                    <div class="diversity-card">
                         <div class="diversity-header">🌈 Protein Diversity</div>
-                        <div class="diversity-sources" id="diversity-sources">
-                            <!-- Filled dynamically -->
-                        </div>
-                        <div class="diversity-tip" id="diversity-tip">Add products from different sources for better nutrition</div>
+                        <div class="diversity-sources" id="diversity-sources"></div>
+                        <div class="diversity-tip" id="diversity-tip">Add products from different sources</div>
                     </div>
 
                     <!-- Products List -->
@@ -343,17 +291,15 @@
                             <h3>📊 All Products</h3>
                             <div class="list-actions">
                                 <select id="sort-by" class="sort-select">
-                                    <option value="cost-asc">Best Value First</option>
-                                    <option value="cost-desc">Highest Cost First</option>
-                                    <option value="protein-desc">Most Protein/$</option>
+                                    <option value="cost-asc">Best Value</option>
+                                    <option value="cost-desc">Highest Cost</option>
                                     <option value="name-asc">Name A-Z</option>
+                                    <option value="date-desc">Recent First</option>
                                 </select>
-                                <button id="clear-all-btn" class="clear-btn">🗑️</button>
+                                <button id="clear-all-btn" class="icon-btn" title="Clear All">🗑️</button>
                             </div>
                         </div>
-                        <div class="products-list" id="products-list">
-                            <!-- Filled dynamically -->
-                        </div>
+                        <div class="products-list" id="products-list"></div>
                     </div>
                 </div>
             </aside>
@@ -363,8 +309,8 @@
                 <div class="viz-container">
                     <div class="chart-placeholder" id="chart-placeholder">
                         <div class="placeholder-icon">📊</div>
-                        <p>Add products to see comparison chart</p>
-                        <small>Visualize protein value across all your products</small>
+                        <p>Add products to see comparison</p>
+                        <small>Scan barcodes or enter manually</small>
                     </div>
                     <canvas id="comparison-chart" class="hidden"></canvas>
                 </div>
@@ -374,38 +320,109 @@
                     <div class="info-card">
                         <h3>💡 Pro Tips</h3>
                         <ul class="tips-list">
-                            <li><strong>Bulk buying?</strong> Compare $/gram across sizes</li>
-                            <li><strong>Whey Isolate:</strong> More protein per scoop, less lactose</li>
-                            <li><strong>Plant proteins:</strong> Combine sources for complete amino acids</li>
-                            <li><strong>Whole foods:</strong> Often cheaper than powders!</li>
+                            <li><strong>Scan barcodes</strong> for instant product lookup</li>
+                            <li><strong>Compare stores</strong> — same product, different prices</li>
+                            <li><strong>Check serving size</strong> — some brands use smaller scoops</li>
+                            <li><strong>Whole foods</strong> often beat powders on $/gram!</li>
                         </ul>
                     </div>
                     
-                    <div class="info-card">
-                        <h3>🎯 How to Use</h3>
-                        <ol class="how-to-list">
-                            <li>📷 Take photos of product & nutrition label</li>
-                            <li>✏️ Enter price and protein info</li>
-                            <li>📊 Compare cost per gram instantly</li>
-                            <li>🏆 Find the best value!</li>
-                        </ol>
+                    <div class="info-card community-card">
+                        <h3>🌍 Community Prices</h3>
+                        <p>Found a better price? Help others save!</p>
+                        <button id="report-price-btn" class="btn-secondary btn-small">
+                            📢 Report a Price
+                        </button>
+                        <small>Coming soon: See prices others have found</small>
                     </div>
                 </div>
             </section>
         </main>
     </div>
 
+    <!-- MODALS -->
+    
     <!-- Product Detail Modal -->
     <div id="product-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
         <div class="modal-content">
-            <button type="button" class="modal-close" id="close-modal">✕</button>
-            <div class="modal-body" id="modal-body">
-                <!-- Filled dynamically -->
+            <div class="modal-header">
+                <h3 id="modal-title">Product Details</h3>
+                <button class="modal-close" id="close-modal">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Favorites Modal -->
+    <div id="favorites-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>❤️ My Favorite Products</h3>
+                <button class="modal-close" id="close-favorites">✕</button>
+            </div>
+            <div class="modal-body" id="favorites-body">
+                <div class="empty-state" id="no-favorites">
+                    <div class="empty-icon">❤️</div>
+                    <p>No favorites yet</p>
+                    <small>Tap the heart icon on any product to save it</small>
+                </div>
+                <div class="favorites-list" id="favorites-list"></div>
             </div>
         </div>
     </div>
 
-    <!-- Chart.js for visualization -->
+    <!-- Report Price Modal -->
+    <div id="price-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📢 Report a Price</h3>
+                <button class="modal-close" id="close-price-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">Help other shoppers by sharing prices you've found!</p>
+                
+                <div class="input-group">
+                    <label>Product</label>
+                    <select id="report-product">
+                        <option value="">-- Select a product --</option>
+                    </select>
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Price ($)</label>
+                        <input type="number" id="report-price" placeholder="24.99" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Store</label>
+                        <select id="report-store">
+                            <option value="">-- Select --</option>
+                            <option value="amazon">Amazon</option>
+                            <option value="costco">Costco</option>
+                            <option value="walmart">Walmart</option>
+                            <option value="target">Target</option>
+                            <option value="gnc">GNC</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>Photo Evidence (Optional)</label>
+                    <input type="file" id="report-photo" accept="image/*" capture="environment">
+                    <small class="hint">Take a photo of the price tag</small>
+                </div>
+                
+                <button id="submit-price-btn" class="btn-primary">Submit Price Report</button>
+                <small class="hint center">🔒 Your report will be reviewed before sharing</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script src="app.js"></script>

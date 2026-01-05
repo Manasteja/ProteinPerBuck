@@ -1,7 +1,7 @@
 {
   "name": "ProteinValue - Smart Protein Shopping",
   "short_name": "ProteinValue",
-  "description": "Compare protein products by cost per gram and find the best value",
+  "description": "Compare protein products by cost per gram with barcode scanning",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -20,7 +20,5 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ],
-  "categories": ["health", "shopping", "utilities"],
-  "screenshots": []
+  ]
 }

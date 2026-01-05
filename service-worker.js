@@ -1,62 +1,35 @@
-/**
- * ProteinValue v2 Service Worker
- * Enables offline functionality and caching
- */
-
-const CACHE_NAME = 'proteinvalue-v2';
+const CACHE_NAME = 'proteinvalue-v3';
 const urlsToCache = [
     '/',
     '/index.html',
     '/styles.css',
     '/app.js',
     '/manifest.json',
-    'https://cdn.jsdelivr.net/npm/chart.js'
+    'https://cdn.jsdelivr.net/npm/chart.js',
+    'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
 ];
 
-// Install event - cache resources
-self.addEventListener('install', (event) => {
+self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('ProteinValue: Caching resources');
-                return cache.addAll(urlsToCache);
-            })
-            .catch((err) => {
-                console.log('ProteinValue: Cache failed', err);
-            })
+            .then(cache => cache.addAll(urlsToCache))
+            .catch(err => console.log('Cache failed:', err))
     );
-    // Activate immediately
     self.skipWaiting();
 });
 
-// Fetch event - serve from cache when offline
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
-            .then((response) => {
-                // Cache hit - return response
-                if (response) {
-                    return response;
-                }
-                return fetch(event.request);
-            })
+            .then(response => response || fetch(event.request))
     );
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
-    const cacheWhitelist = [CACHE_NAME];
+self.addEventListener('activate', event => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheWhitelist.indexOf(cacheName) === -1) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
+        caches.keys().then(names => 
+            Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))
+        )
     );
-    // Take control immediately
     self.clients.claim();
 });
